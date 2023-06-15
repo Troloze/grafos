@@ -1,0 +1,132 @@
+A implementação está sendo feita em C, e as estruturas de dados utilizadas são as seguintes:
+
+\begin{center}
+    \begin{verbatim}
+Grafo : graph {
+    Array de Vértices 'v',
+    Array de Arestas 'e',
+    Inteiro 'vertN', (guarda o tamanho de v)
+    Inteiro 'edgeN', (guarda o tamanho de e)
+    Inteiro 'delta'  (guarda o maior grau dentro de v)
+}
+
+Vértice : vertex {
+    Inteiro 'ID', (identificador único de vértices)
+    Inteiro 'degree', (grau do vértice)
+    Inteiro 'color', (cor do vértice)
+    Array de Inteiros 'edges', (lista com os IDs das arestas incidentes)
+    Array de Inteiros 'neigh', (lista com os IDs dos vértices vizinhos)
+    Lista de Inteiros auxiliar, (uma lista de inteiros)
+    Lista de Bits auxiliar (Uma lista de bits)
+    Ponteiro para o grafo 'g'
+}
+
+Aresta : edge {
+    Inteiro 'ID', (identificador único de arestas)
+    Array de 2 inteiros 'verts', (guarda o ID dos vértices incidentes à arestas)
+    Inteiro 'color', (cor da aresta)
+    Lista de bits auxiliar, (lista de bits)
+    Ponteiro para o grafo 'g'
+}
+
+Conjunto de arestas : edgeSet {
+    Inteiro 'size',
+    Inteiro 'max',
+    Array de Lista de bits 'sets', 
+}
+
+Lista de inteiros : intList {
+    Inteiro 'size', (Quantidade de elementos da lista)
+    Array de inteiros 'data
+}
+
+Lista de bits : bitList {
+    Inteiro 'size', (Quantidade de bits considerados na lista)
+    Array de inteiros 'data'
+}
+
+Contador de Permutação : perCounter {
+    Inteiro 'size',
+    Array de inteiros 'values', 
+    Array de inteiros 'counter', 
+}
+
+    \end{verbatim}
+\end{center}
+
+A lista de inteiros, a lista de bits e o contador de permutação são estruturas implementadas para o projeto.
+
+A lista de inteiros é uma lista dinamicamente alocada com inteiros, não é muito diferente de um array com a exceção de que o tamanho da lista está gravado. Busca, criação e liberação de memória tem todos complexidade $O(1)$
+
+A lista de bits trabalha de forma diferente. A ideia da implementação é simular um conjunto. Se você sabe quantos elementos tem um conjunto universo, você pode utilizar as listas de bits para simular qualquer subconjunto basta você colocar verdadeiro nos elementos que pertencem no conjunto e falso nos que não pertencem ao conjunto. Busca tem complexidade $O(n)$ enquanto criação e liberação de memória tem complexidade $O(1)$. Existem também algumas operações para essas listas, como inverter e comparar (verificar se são iguais, se a interseção não é vazia ou se são completamente independentes (não possuem nenhum elemento em comum)) ambos com complexidade $O(n)$ 
+
+O contador de permutação é uma estrutura que facilita na hora de fazer iterações sobre permutações, por exemplo, nós temos 10 camisetas, 3 calças e 12 pares de sapatos para escolher, o contador de permutação irá facilitar a permutação de todas as combinações. Criação e Contagem ambos tem complexidade $O(n)$
+
+O algoritmo de coloração de grafos bipartidos é relativamente trivial,
+o primeiro passo é colorir os vértices. Uma propriedade dos grafos bipartidos é que é possível dividir os vértices em duas partes tal que dois vértices em uma partição nunca serão vizinhos, O que se pode inferir disso é que todos os vizinhos de um vértice num grafo bipartido serão da partição oposta ao vértice inicial, isso faz com que os colorir seja trivial.
+
+\begin{algorithm}
+    \caption {Coloração de vértices em grafo bipartido conexo}
+    \label {alg01}
+    \textbf{Entrada}: Grafo G não colorido (cores dos vértices e arestas = -1)\\
+    \textbf{Variáveis}: Array de inteiros \textit{buffer}, Inteiro \textit{bufferSize}, Vértice \textit{cV}
+    \begin{algorithmic}[1]
+        \State $bufferSize = 1$
+        \State $buffer[0] \gets 0$
+        \State $G.V[0].color = 0$ 
+        \For{$i \gets 0; i < bufferSize; i \gets i + 1$}
+            \State $cV \gets G.V[i]$    
+            \For{$j \gets 0; j < cV.degree; j \gets j + 1$}
+                \If{$G.V[cV.neigh[j]].color \neq -1$}
+                    \If {$G.V[cV.neigh[j]].color = cV.color$}  
+                        \State $Return$  
+                    \EndIf
+                    \State $Continue$   
+                \EndIf
+                \State $buffer[bufferSize] \gets cV.neigh[j]$
+                \If {$cV.color = 0$}
+                    \State $G.V[cV.neigh[j]].color \gets 1$ 
+                \ElsIf
+                    \State $G.V[cV.neigh[j]].color \gets 0$ 
+                \EndIf
+                \State $bufferSize \gets bufferSize + 1$
+            \EndFor
+        \EndFor       
+    \end{algorithmic}
+\end{algorithm}
+
+Essencialmente o algoritmo \ref{alg01} faz uma busca em largura, colorindo de forma alternada os vértices, e sua complexidade é de $O(n^2)$ (no pior caso).
+
+Com os vértices coloridos, basta colorir as Arestas, para isso se escolhe um vértice qualquer e se faz exatamente a mesma coisa, mas ao invés de colorir os vértices, nós iremos colorir as arestas. Sempre que uma aresta tocar um vértice que ainda não foi lido (ele pode ter sido identificado antes, só não lido dentro do buffer), a cor da aresta é guardada num conjunto e quando o vértice for lido no buffer, as arestas incidentes que ainda não foram coloridas serão coloridas com cores válidas (qualquer cor que não seja dos vértices, ou das arestas incidentes).
+
+\begin{algorithm}
+    \caption {Coloração de arestas em grafo bipartido conexo}
+    \label {alg02}
+    \textbf{Entrada}: Grafo G não colorido (cores das arestas = -1)\\
+    \textbf{Variáveis}: Array de inteiros \textit{buffer}, Inteiro \textit{bufferSize}, Vértice \textit{cV}
+    \begin{algorithmic}[1]
+        \State $bufferSize = 1$
+        \State $buffer[0] \gets 0$
+        \For{$i \gets 0; i < bufferSize; i \gets i + 1$}
+            \State $cV \gets G.V[i]$   
+            \State $SetBit(cV.aux, 0, 1)$ \Comment{Colocar o bit na posição 0 como 1.}
+            \State $SetBit(cV.aux, 1, 1)$ \Comment{Colocar o bit na posição 1 como 1.}
+            \State $InverterListaDeBits(cV.aux)$ \Comment {Nas posições com valor 0, foi colocado 1 e vice versa.}
+            \For{$j \gets 0; j < cV.degree; j \gets j + 1$}
+                \If{$G.V[cV.neigh[j]].color \neq -1$}
+                    \If {$G.V[cV.neigh[j]].color = cV.color$}  
+                        \State $Return$  
+                    \EndIf
+                    \State $Continue$   
+                \EndIf
+                \State $buffer[bufferSize] \gets cV.neigh[j]$
+                \If {$cV.color = 0$}
+                    \State $G.V[cV.neigh[j]].color \gets 1$ 
+                \ElsIf
+                    \State $G.V[cV.neigh[j]].color \gets 0$ 
+                \EndIf
+                \State $bufferSize \gets bufferSize + 1$
+            \EndFor
+        \EndFor       
+    \end{algorithmic}
+\end{algorithm}

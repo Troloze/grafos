@@ -4,6 +4,7 @@
         "graph.h": "c",
         "stdlib.h": "c",
         "math.h": "c",
-        "limits": "c"
+        "limits": "c",
+        "time.h": "c"
     }
 }

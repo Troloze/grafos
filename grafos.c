@@ -1,8 +1,18 @@
-#include "graph.h"
+#include "nGraph.h"
 
 int main (int argc, char** argv) {
-    
-    int e[] = {
+
+    int _bD[] = {4, 5};
+    int _b[] = {
+        0, 1,
+        0, 2,
+        0, 3,
+        1, 2,
+        2, 3
+    };
+
+    int _eD[] = {5, 6};
+    int _e[] = {
         0, 1, 
         0, 2, 
         0, 4, 
@@ -11,6 +21,7 @@ int main (int argc, char** argv) {
         3, 4
     };
 
+    int _k5D[] = {5, 10};
     int _k5[] = {
         0, 1,
         0, 2,
@@ -24,7 +35,8 @@ int main (int argc, char** argv) {
         3, 4
     };
 
-    int bip[] = {
+    int _bipD[] = {9, 9};
+    int _bip[] = {
         0, 5,
         0, 7,
         1, 5,
@@ -36,6 +48,7 @@ int main (int argc, char** argv) {
         4, 8    
     };
 
+    int _k44D[] = {8, 16};
     int _k44[] = {
         0, 4,
         1, 4,
@@ -56,17 +69,28 @@ int main (int argc, char** argv) {
     };
 
 
-    graph * nG = generateGraph(5, 6, e);
-    //graph * K5 = generateGraph(5, 10, _k5);
-    graph * Bip = generateGraph(9, 9, bip);
-    graph * K44 = generateGraph(8, 16, _k44);
-
-    colorBipGraph(K44);
-    
-    freeGraph(Bip);
-    freeGraph(K44);
-    freeGraph(nG);
-    //freeGraph(K5);
-
+/*/
+    iterator * it = createIterator(10, NULL, 10);
+    printIterator(it);
+    for (int i = 0; i < 10; i++) {
+        lockValue(it, i, i);
+        printIterator(it);
+    }
+//*/
+//*/
+    graph * b = createGraph(_k44D[0], _k44D[1], _k44);
+//*/
+    vertexGraphColoring(b);
+    totalGraphColoring(b);
+    destroyGraph(b);
+/*/
+    printGraph(b, 1, 0, 0);
+    transformKey * tK;  
+    graph * nE = transformGraph(b, &tK);
+    printGraph(nE, 1, 0 , 0);
+    destroyGraph(b);
+    destroyGraph(nE);
+    destroyTransformKey(tK);
+//*/
     return 0;
 }
