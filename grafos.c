@@ -69,21 +69,45 @@ int main (int argc, char** argv) {
     };
 
 
+
+
+//*/
+    UCI * it = createUCI(5, 10, 1, 0);
+    printf("Teste\n");
 /*/
-    iterator * it = createIterator(10, NULL, 10);
-    printIterator(it);
-    for (int i = 0; i < 10; i++) {
-        lockValue(it, i, i);
-        printIterator(it);
-    }
+    it->configuration[0] = 5;
+    it->configuration[1] = 4;
+    it->configuration[2] = 3;
+    it->configuration[3] = 3;
+    it->configuration[4] = 3;
+    it->configuration[5] = 2;
+    printUCI(it, 0, 1);
 //*/
 //*/
+    do {
+        getchar();
+        printUCI(it, 0, 0);
+        printf("\n");
+        if (iterateUCI(it) == 1) break;
+    } while(1);
+//*/    
+/*/
+    iterateUCI(it);
+    printUCI(it, 0, 1);
+    iterateUCI(it);
+    printUCI(it, 0, 0);
+    iterateUCI(it);
+    printUCI(it, 1, 0);
+//*/
+    destroyUCI(it);
+//*/
+/*/
     graph * b = createGraph(_k44D[0], _k44D[1], _k44);
-//*/
-    vertexGraphColoring(b);
+//*
+    //vertexGraphColoring(b);
     totalGraphColoring(b);
     destroyGraph(b);
-/*/
+//*
     printGraph(b, 1, 0, 0);
     transformKey * tK;  
     graph * nE = transformGraph(b, &tK);
@@ -92,5 +116,6 @@ int main (int argc, char** argv) {
     destroyGraph(nE);
     destroyTransformKey(tK);
 //*/
+    printf("Success\n");
     return 0;
 }

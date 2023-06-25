@@ -197,15 +197,15 @@ void totalGraphColoring(graph * in) {
     graph * trans = transformGraph(in, &tK);
     vertex * max = findMaxDegreeVertex(in);
     vertex * transMax = trans->vertexList[max->id];
-    iterator * it = createIterator(trans->vertexCount, NULL, in->delta + 1);
-    unsigned long long int type2 = 0, c = 0, c2 = 0;
+    int *startValue = NULL;
+    iterator * it = createIterator(trans->vertexCount, startValue, in->delta + 2);
+    unsigned long long int type2 = 1, c = 0, c2 = 1;
     lockValue(it, transMax->id, c++);
     for (int i = 0; i < transMax->degree; i++) {
         if (transMax->neighboors[i].vertex->id >= in->vertexCount)
             lockValue(it, transMax->neighboors[i].vertex->id, c++);
     }
 
-    c = 0;
     while (!validateColoring(trans, it)) {
         c++;
         if (c == 1000000000) {
