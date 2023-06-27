@@ -18,12 +18,11 @@ typedef struct iterator {
 typedef struct uniqueConfigurationIterator {
     int size;
     int limit;
+    int used;
     int * configuration;
     int * maxValues;
     int * valueConfig;
     int * pointers;
-    int * order;
-    int * values;
 } UCI;
 
 
@@ -38,9 +37,13 @@ void printIterator(iterator * it);
 void printUCI(UCI * in, int printDetail, int shorten);
 
 iterator * createIterator(int size, int * startingValues, int maxValue);
+iterator * cloneIterator(iterator * it);
 void destroyIterator(iterator * it);
 
 UCI * createUCI(int k, int n, int zero, int extra);
+UCI * cloneUCI(UCI * in);
+void UCIResetBase(UCI * in);
+int * UCIGetValues(UCI * in);
 void destroyUCI(UCI * in);
 
 #endif

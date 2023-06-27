@@ -1,81 +1,5 @@
 #include "nMisc.h"
 
-static void UCIGetOrder(UCI * in) {
-    int p1, p2, v, aux;
-    for (int i = 0; i < in->limit; i++) {
-        in->order[i] = (in->configuration[i] <= 1) ? -1 : i;
-    }
-
-    v = in->configuration[0];
-    p1 = 0;
-    p2 = -1;
-    for (int i = 1; i < in->limit; i++) {
-        
-        if (v == in->configuration[i]) {
-            p2 = i;
-            continue;
-        }
-        if (p2 != -1) {
-            while (p2 > p1) {
-                aux = in->order[p1];
-                in->order[p1] = in->order[p2];
-                in->order[p2] = aux;
-                p1++;
-                p2--;
-            }
-        }
-        p1 = i;
-        p2 = -1;
-        v = in->configuration[i];
-        if (v <= 1) break;
-    }
-
-    if (p2 != -1) { // Caso o último valor faça parte de uma sequência igual.
-        while (p2 > p1) {
-            aux = in->order[p1];
-            in->order[p1] = in->order[p2];
-            in->order[p2] = aux;
-            p1++;
-            p2--;
-        }
-    }
-
-    return;
-}
-
-static void UCIGetValues(UCI * in) {
-    int c;
-    for (int i = 0; i < in->size; i++) {
-        in->values[i] = -1;
-    }
-    for (int i = 0; i < in->limit; i++) {
-        for (int j = 0; j < in->configuration[i]; j++) {
-            c = 0;
-            while (in->values[j + in->pointers[i] + c] != -1) {
-                c++;
-            }
-            in->values[j + in->pointers[i] + c] = i;
-        }
-    }
-    return;
-}
-
-static void UCIResetBase(UCI * in) {
-    in->maxValues[0] = in->size;
-    in->pointers[0] = 0;
-    for (int i = 0; i < in->limit - 1; i++) {
-        in->maxValues[i + 1] = in->maxValues[i] - in->configuration[i];
-        in->pointers[i + 1] = in->pointers[i] + in->configuration[i];
-    }
-    for (int i = 0; i < in->limit; i++) {
-        for (int j = 0; j < in->configuration[i]; j++) {
-            in->valueConfig[j + in->pointers[i]] = j;
-        }
-    }
-    UCIGetOrder(in);
-    UCIGetValues(in);
-}
-
 static int UCIIterateConfig(UCI * in) {
     if (!in) return -1;
     if (in->limit == 1) return 1;
@@ -110,30 +34,58 @@ static int UCIIterateConfig(UCI * in) {
     return 0;
 }
 
-static int UCIIterateBaseLine(UCI * in, int line, int upper, int lower) {
-    int pointer;
+static void UCIResetBaseLine(UCI * in, int line, int index) {
+    if (index >= in->maxValues[line]) return;
+    for (int i = index + 1; i < in->configuration[line]; i++) {
+        in->valueConfig[in->pointers[line] + i] = in->valueConfig[in->pointers[line] + i - 1] + 1;
+    }
+    return;
+}
+
+static int UCIIterateBaseLine(UCI * in, int line) {
+    int index, flip = 1, pointer, upperBound = -1, lowerBound = -1;
+    
+    if (line > 0) {
+        if (in->configuration[line - 1] == in->configuration[line])
+            lowerBound = in->valueConfig[in->pointers[line - 1]];
+    }
+    if (line < in->used - 1) {
+        if (in->configuration[line + 1] == in->configuration[line])
+            upperBound = in->valueConfig[in->pointers[line + 1]];
+    }
+
     for (int i = 0; i < in->configuration[line]; i++) {
-        pointer = (in->configuration[line] - 1 - i) + in->pointers[line];
+        index = (in->configuration[line] - 1 - i);
+        pointer = index + in->pointers[line];
         if (in->valueConfig[pointer] == in->maxValues[line] - 1 - i) {
             continue;
+        } // Procurar o primeiro valor que não esteja na posição máxima
+        if (index == 0) { //Se a posição do valor for 0, ver se está no limite máximo)
+            if (in->valueConfig[pointer] == upperBound) {
+                break;
+            }
         }
-        
+        in->valueConfig[pointer]++;
+        UCIResetBaseLine(in, line, index);
         return 0;
     }
+    if (flip) {
+        if (lowerBound == -1) lowerBound = 0;
+        in->valueConfig[in->pointers[line]] = lowerBound;
+        UCIResetBaseLine(in, line, 0);
+    }
+    return 1;
 }
 
 static int UCIIterateBase(UCI * in) {
     int l = -1, v = -1, j;
-    if (in->limit == 1) return 1;
+    if (in->used == 1) return 1;
 
-
-    for (int i = 0; i < in->limit; i++) {
+    for (int i = 0; i < in->used; i++) {
         if (in->configuration[i] <= 1) {
-
             return 1;
         }
-        if (!UCIIterateBaseLine(in, i, 0, 0)) {
-
+        if (!UCIIterateBaseLine(in, i)) {
             return 0;
         }
         v = in->configuration[i];
@@ -183,7 +135,7 @@ int iterateUCI(UCI * in) {
     if (i) UCIGetValues(in);
     return i;
     //*/
-    UCIGetValues(in);
+
     return 0;
 }
 
@@ -201,6 +153,14 @@ iterator * createIterator(int size, int * startingValues, int maxValue) {
     else 
         for (int i = 0; i < size; i++) ret->values[i] = startingValues[i];
 
+    return ret;
+}
+
+iterator * cloneIterator(iterator * it) {
+    iterator * ret = createIterator(it->size, it->values, it->maxValue);
+    for (int i = 0; i < it->lockedSize; i++) {
+        lockValue(ret, it->lockedValues[i], it->values[it->lockedValues[i]]);
+    }
     return ret;
 }
 
@@ -275,23 +235,23 @@ int unlockValue(iterator * it, int valuePos) {
 
 UCI * createUCI(int k, int n, int zero, int extra) {
     UCI * ret = malloc(sizeof(UCI));
-    if (extra) k++;
     int counter = n;
 
+    ret->used = k;
+    if (extra) k++;
     ret->size = n;
     ret->limit = k;
     ret->configuration = malloc(sizeof(int) * k);
     ret->pointers = malloc(sizeof(int) * k + 1);
     ret->maxValues = malloc(sizeof(int) *  k);
     ret->valueConfig = malloc(sizeof(int) * n);
-    ret->order = malloc(sizeof(int) * k);
-    ret->values = malloc(sizeof(int) * n);
-    
+    if (zero) ret->used = 1;
+
 
     if (extra) k--;
    
     for (int i = 0; i < k; i++) {
-        ret->order[i] = -1;
+
         if (!zero) {
             ret->configuration[i] = 1;
             if (--counter == 0) zero = 1;
@@ -303,25 +263,43 @@ UCI * createUCI(int k, int n, int zero, int extra) {
     if (extra) ret->configuration[k] = 0;
 
     ret->configuration[0] += counter;
-    ret->maxValues[0] = n;
-    ret->pointers[0] = 0;
-    
-    for (int i = 0; i < ret->limit - 1; i++) {
-        ret->maxValues[i + 1] = ret->maxValues[i] - ret->configuration[i];
-        ret->pointers[i + 1] = ret->pointers[i] + ret->configuration[i];
+
+    UCIResetBase(ret);
+    return ret;
+}
+
+UCI * cloneUCI(UCI * in) {
+    UCI * ret = createUCI(in->limit, in->size, 1, 0);
+
+    for (int i = 0; i < in->limit; i++) {
+        ret->configuration[i] = in->configuration[i];
+        ret->maxValues[i] = in->maxValues[i];
+        ret->pointers[i] = in->pointers[i];
     }
 
-    ret->pointers[k] = n;
-    
-    for (int i = 0; i < ret->limit; i++) {
-        for (int j = 0; j < ret->configuration[i]; j++) {
-            ret->valueConfig[j + ret->pointers[i]] = j;
+    for (int i = 0; i < in->size; i++) {
+        ret->valueConfig = in->valueConfig;
+    }
+
+    ret->used = in->used;
+
+    return ret;
+}
+
+void UCIResetBase(UCI * in) {
+    in->maxValues[0] = in->size;
+    in->pointers[0] = 0;
+    in->used = 0;
+    for (int i = 0; i < in->limit - 1; i++) {
+        in->maxValues[i + 1] = in->maxValues[i] - in->configuration[i];
+        in->pointers[i + 1] = in->pointers[i] + in->configuration[i];
+    }
+    for (int i = 0; i < in->limit; i++) {
+        if (in->configuration[i] != 0) in->used++;
+        for (int j = 0; j < in->configuration[i]; j++) {
+            in->valueConfig[j + in->pointers[i]] = j;
         }
     }
-    UCIGetOrder(ret);
-    UCIGetValues(ret);
-    
-    return ret;
 }
 
 void destroyUCI(UCI * in) {
@@ -329,9 +307,37 @@ void destroyUCI(UCI * in) {
     free(in->pointers);
     free(in->maxValues);
     free(in->configuration);
-    free(in->order);
-    free(in->values);
     free(in);
+}
+
+int * UCIGetValues(UCI * in) { 
+    int * ret, * aux, * swap, c, cAux;
+    ret = malloc(sizeof(int) * in->size);
+    aux = malloc(sizeof(int) * in->size);
+    for (int i = 0; i < in->size; i++) {
+        ret[i] = -1;
+        aux[i] = -1;
+    }
+    for (int i = in->limit - 1; i >= 0; i--) {
+        c = 0;
+        cAux = 0;
+        swap = ret;
+        ret = aux;
+        aux = swap;
+        for (int j = 0; j < in->maxValues[i]; j++) {
+            if (c < in->configuration[i]) {
+                if (in->valueConfig[c + in->pointers[i]] == j) {
+                    ret[j] = i;    
+                    c++;
+                    continue;
+                }
+            }
+            ret[j] = aux[cAux];
+            cAux++;
+        }
+    }
+    free(aux);
+    return ret;
 }
 
 void destroyIterator(iterator * it) {
@@ -369,8 +375,8 @@ void printIterator(iterator * it) {
 }
 
 void printUCI(UCI * in, int printDetail, int shorten) {
-    int pointer, validator;
-    printf("UCI\nSize: %d, Limit: %d\n", in->size, in->limit);
+    int pointer, validator, counter;
+    printf("UCI\nSize: %d, Limit: %d, Used: %d\n", in->size, in->limit, in->used);
     printf("Config: [");
     for (int i = 0; i < in->limit; i++) {
         printf("%d", in->configuration[i]);
@@ -399,28 +405,18 @@ void printUCI(UCI * in, int printDetail, int shorten) {
             if (i%20 == 19) printf("\n         ");
         }
     }
-    printf("Order : [");
-    for (int i = 0; i < in->limit; i++) {
-        printf("%d", in->order[i]);
-        if (i == in->limit - 1) printf("]\n");
+ 
+    printf("VConfig: [");
+    for (int i = 0; i < in->size; i++) {
+        printf("%d", in->valueConfig[i]);
+        if (i == in->size - 1) printf("]\n");
         else {
             printf(", ");
             if (i%20 == 19) printf("\n         ");
         }
     }
     
-    if (!printDetail) {
-        printf("VConfig: [");
-        for (int i = 0; i < in->size; i++) {
-            printf("%d", in->valueConfig[i]);
-            if (i == in->size - 1) printf("]\n");
-            else {
-                printf(", ");
-                if (i%20 == 19) printf("\n         ");
-            }
-        }
-    }
-    else {
+    if (printDetail) {
         printf("VConfg:\n");
         for (int i = 0; i < in->limit; i++) {
             if (in->configuration[i] == 0) {
@@ -428,9 +424,10 @@ void printUCI(UCI * in, int printDetail, int shorten) {
                 continue;
             }
             printf("(%d) [", i);
-            pointer = 0;
+            pointer = in->pointers[i];
+            counter = 0;
             for (int j = 0; j < in->maxValues[i]; j++) {
-                if (pointer >= in->configuration[i]) {
+                if (counter >= in->configuration[i]) {
                     printf("0");
                 }
                 else {
@@ -440,8 +437,11 @@ void printUCI(UCI * in, int printDetail, int shorten) {
                     else {
                         printf("1");
                         pointer++;
+                        counter++;
                     }
                 }
+
+
                 if (j == in->maxValues[i] - 1) printf("]\n");
                 else {
                     printf(", ");
@@ -454,15 +454,5 @@ void printUCI(UCI * in, int printDetail, int shorten) {
                 }
             }
         } 
-    }
-
-    printf("Values: [");
-    for (int i = 0; i < in->size; i++) {
-        printf("%d", in->values[i]);
-        if (i == in->size - 1) printf("]\n");
-        else {
-            printf(", ");
-            if (i%20 == 19) printf("\n         ");
-        }
     }
 }

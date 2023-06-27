@@ -56,10 +56,15 @@ edge * createEdge();
 vertex * createVertex();
 
 void vertexGraphColoring(graph * in);
+
 void totalGraphColoring(graph * in);
+void totalGraphColoringUCI(graph * in);
 
 int validateColoring(graph * in, iterator * it);
+int validateColoringUCI(graph * in, UCI * uci);
 void setColor(graph * in, iterator * it);
+void setColorUCI(graph * in, UCI * uci);
+
 void translateColorToOriginalGraph(graph * original, graph * transformed);
 
 vertex * findMaxDegreeVertex(graph * in);

@@ -71,50 +71,57 @@ int main (int argc, char** argv) {
 
 
 
-//*/
-    UCI * it = createUCI(5, 10, 1, 0);
-    printf("Teste\n");
 /*/
-    it->configuration[0] = 5;
-    it->configuration[1] = 4;
-    it->configuration[2] = 3;
-    it->configuration[3] = 3;
-    it->configuration[4] = 3;
-    it->configuration[5] = 2;
-    printUCI(it, 0, 1);
-//*/
-//*/
+    int * a;
+    UCI * it = createUCI(5, 8, 1, 0);
+    printf("Teste\n");
+//*
+    int conf[] = {1, 7, 1, 5, 1, 3, 0, 0};
+    it->configuration[0] = 2;
+    it->configuration[1] = 2;
+    it->configuration[2] = 2;
+    it->configuration[3] = 1;
+    it->configuration[4] = 1;
+    UCIResetBase(it);
+    
+    for (int i = 0; i < it->size; i++) {
+        it->valueConfig[i] = conf[i];
+    }  
+//*
+//*
+    printUCI(it, 1, 0);
     do {
         getchar();
-        printUCI(it, 0, 0);
         printf("\n");
         if (iterateUCI(it) == 1) break;
+        a = UCIGetValues(it);
+        printUCI(it, 1, 0);
+        printf("Values: [");
+        for (int i = 0; i < it->size; i++) {
+            printf("%d, ", a[i]);
+        }
+        printf("]\n");
+        free(a);
     } while(1);
+    printUCI(it, 1, 0);
 //*/    
 /*/
+    printUCI(it, 0, 0);
     iterateUCI(it);
-    printUCI(it, 0, 1);
+    printUCI(it, 0, 0);
     iterateUCI(it);
     printUCI(it, 0, 0);
     iterateUCI(it);
     printUCI(it, 1, 0);
-//*/
+//*
     destroyUCI(it);
 //*/
-/*/
+//*/
     graph * b = createGraph(_k44D[0], _k44D[1], _k44);
 //*
     //vertexGraphColoring(b);
-    totalGraphColoring(b);
+    totalGraphColoringUCI(b);
     destroyGraph(b);
-//*
-    printGraph(b, 1, 0, 0);
-    transformKey * tK;  
-    graph * nE = transformGraph(b, &tK);
-    printGraph(nE, 1, 0 , 0);
-    destroyGraph(b);
-    destroyGraph(nE);
-    destroyTransformKey(tK);
 //*/
     printf("Success\n");
     return 0;

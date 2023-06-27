@@ -236,6 +236,58 @@ void totalGraphColoring(graph * in) {
     destroyGraph(trans);
 }
 
+void totalGraphColoringUCI(graph * in) {
+    transformKey * tK;
+    graph * trans = transformGraph(in, &tK);
+    vertex * max = findMaxDegreeVertex(in);
+    vertex * transMax = trans->vertexList[max->id];
+    UCI * uci = createUCI(in->delta + 1, trans->vertexCount, 0, 1);
+    uci->configuration[0] = 10;
+    uci->configuration[1] = 9;
+    uci->configuration[2] = 3;
+    uci->configuration[3] = 1;
+    uci->configuration[4] = 1;
+    uci->configuration[5] = 0;
+    int configVal[] = {1, 3, 4, 6, 8, 10, 14, 16, 21, 23, 0, 1, 3, 4, 8, 9, 11, 12, 13, 0, 1, 2, 0, 0};
+    for (int i = 0; i < uci->size; i++) {
+        uci->valueConfig[i] = configVal[i];
+    }
+    uci->maxValues[0] = uci->size;
+    uci->pointers[0] = 0;
+    uci->used = 0;
+    for (int i = 0; i < uci->limit - 1; i++) {
+        uci->maxValues[i + 1] = uci->maxValues[i] - uci->configuration[i];
+        uci->pointers[i + 1] = uci->pointers[i] + uci->configuration[i];
+    }
+    unsigned long long int type2 = 1, c = 9999999, c2 = 10856;
+
+
+    while (!validateColoringUCI(trans, uci)) {
+        c++;
+        if (c == 10000000) {
+            printf("%llu dezenas de milhoes de iteracoes testadas. Iteracao atual:\n", c2);
+            printUCI(uci, 1, 0);
+            printf("\n");
+            c2++;
+            c = 0;
+        }
+        if (iterateUCI(uci) == 1) {
+            printf("Alguma coisa deu muito errado:\n Não foi possivel fazer a coloracao total com delta + 1 ou delta + 2 cores.\n");
+            return;
+        }
+    }
+    printf("Coloracao encontrada depois de %llu%07llu iteracoes.\nO grafo e tipo %d\n", c2, c, (type2) ? 2 : 1);
+    
+    setColorUCI(trans, uci);
+    translateColorToOriginalGraph(in, trans);
+    printUCI(uci, 1, 0);
+    printGraph(trans, 1, 0, 1);
+    printGraph(in, 1, 1, 1);
+    destroyUCI(uci);
+    destroyTransformKey(tK);
+    destroyGraph(trans);
+}
+
 int validateColoring(graph * in, iterator * it) {
     vertex * current, * currentN;
     for (int i = 0; i < in->vertexCount; i++) {
@@ -248,10 +300,35 @@ int validateColoring(graph * in, iterator * it) {
     return 1;
 }
 
+int validateColoringUCI(graph * in, UCI * uci) {
+    int * values = UCIGetValues(uci);
+    vertex * current, * currentN;
+    for (int i = 0; i < in->vertexCount; i++) {
+        current = in->vertexList[i];
+        for (int j = current->nextNeighboorID; j < current->degree; j++) {
+            currentN = in->vertexList[i]->neighboors[j].vertex;
+            if (values[current->id] == values[currentN->id]) {
+                free(values);
+                return 0;
+            }
+        }
+    }
+    free(values);
+    return 1;
+}
+
 void setColor(graph * in, iterator * it) {
     for (int i = 0; i < in->vertexCount; i++) {
         in->vertexList[i]->color = it->values[i];
     }
+}
+
+void setColorUCI(graph * in, UCI * uci) {
+    int * values = UCIGetValues(uci);
+    for (int i = 0; i < in->vertexCount; i++) {
+        in->vertexList[i]->color = values[i];
+    }
+    free(values);
 }
 
 void translateColorToOriginalGraph(graph * original, graph * transformed) {
