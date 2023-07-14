@@ -242,13 +242,13 @@ void totalGraphColoringUCI(graph * in) {
     vertex * max = findMaxDegreeVertex(in);
     vertex * transMax = trans->vertexList[max->id];
     UCI * uci = createUCI(in->delta + 1, trans->vertexCount, 0, 1);
-    uci->configuration[0] = 10;
-    uci->configuration[1] = 9;
-    uci->configuration[2] = 3;
+    uci->configuration[0] = 8;
+    uci->configuration[1] = 7;
+    uci->configuration[2] = 7;
     uci->configuration[3] = 1;
     uci->configuration[4] = 1;
     uci->configuration[5] = 0;
-    int configVal[] = {1, 3, 4, 6, 8, 10, 14, 16, 21, 23, 0, 1, 3, 4, 8, 9, 11, 12, 13, 0, 1, 2, 0, 0};
+    int configVal[] = {0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 7, 0, 0};
     for (int i = 0; i < uci->size; i++) {
         uci->valueConfig[i] = configVal[i];
     }
@@ -259,7 +259,7 @@ void totalGraphColoringUCI(graph * in) {
         uci->maxValues[i + 1] = uci->maxValues[i] - uci->configuration[i];
         uci->pointers[i + 1] = uci->pointers[i] + uci->configuration[i];
     }
-    unsigned long long int type2 = 1, c = 9999999, c2 = 10856;
+    unsigned long long int type2 = 1, c = 9999999, c2 = 136000;
 
 
     while (!validateColoringUCI(trans, uci)) {
