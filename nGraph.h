@@ -38,6 +38,7 @@ struct _edge {
 struct _vertex {
     neighboorData * neighboors;
     int nextNeighboorID;
+    bitmap * neighboorMap;
     graph * parent;
     int degree;
     int color;
@@ -56,12 +57,15 @@ edge * createEdge();
 vertex * createVertex();
 
 void vertexGraphColoring(graph * in);
+void vertexGraphColoringUCI(graph * in);
 
 void totalGraphColoring(graph * in);
 void totalGraphColoringUCI(graph * in);
 
 int validateColoring(graph * in, iterator * it);
 int validateColoringUCI(graph * in, UCI * uci);
+int validateColoringUCI2(graph * in, UCI * uci, bitmap * bm);
+
 void setColor(graph * in, iterator * it);
 void setColorUCI(graph * in, UCI * uci);
 

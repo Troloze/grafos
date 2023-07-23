@@ -78,7 +78,6 @@ static int UCIIterateBaseLine(UCI * in, int line) {
 }
 
 static int UCIIterateBase(UCI * in) {
-    int l = -1, v = -1, j;
     if (in->used == 1) return 1;
 
     for (int i = 0; i < in->used; i++) {
@@ -88,7 +87,6 @@ static int UCIIterateBase(UCI * in) {
         if (!UCIIterateBaseLine(in, i)) {
             return 0;
         }
-        v = in->configuration[i];
     }
 
     return 1;
@@ -245,6 +243,10 @@ UCI * createUCI(int k, int n, int zero, int extra) {
     ret->pointers = malloc(sizeof(int) * k + 1);
     ret->maxValues = malloc(sizeof(int) *  k);
     ret->valueConfig = malloc(sizeof(int) * n);
+    ret->values = malloc(sizeof(int) * n);
+    ret->valueMap = NULL;
+    ret->list = malloc(sizeof(linkedList) * n);
+    ret->auxList = malloc(sizeof(linkedList*) * n);
     if (zero) ret->used = 1;
 
 
@@ -287,6 +289,12 @@ UCI * cloneUCI(UCI * in) {
 }
 
 void UCIResetBase(UCI * in) {
+    if (in->valueMap != NULL) {
+        for (int i = 0; i < in->used; i++) {
+            destroyBitmap(in->valueMap[i]);
+        }
+        free(in->valueMap);
+    }
     in->maxValues[0] = in->size;
     in->pointers[0] = 0;
     in->used = 0;
@@ -299,6 +307,11 @@ void UCIResetBase(UCI * in) {
         for (int j = 0; j < in->configuration[i]; j++) {
             in->valueConfig[j + in->pointers[i]] = j;
         }
+    }
+
+    in->valueMap = malloc(sizeof(bitmap *) * in->used);
+    for (int i = 0; i < in->used; i++) {
+        in->valueMap[i] = createBitmap(in->size);
     }
 }
 
@@ -338,6 +351,56 @@ int * UCIGetValues(UCI * in) {
     }
     free(aux);
     return ret;
+}
+
+void UCIGetValues2(UCI * in) {
+    if (in->size == 0) return;
+    int auxInt;
+    int * values = in->values;
+    linkedList base;
+    linkedList * list = in->list;
+    linkedList ** auxList = in->auxList;
+    base.id = -1;
+
+    
+
+    for (int i = 0; i < in->size; i++) {
+        list[i].id = i;
+        list[i].value = -1;
+        if (i == 0) list[i].prev = &base;
+        else list[i].prev = &list[i-1];
+        if (i == in->size - 1) list[i].next = NULL;
+        else list[i].next = &list[i+1];
+        auxList[i] = &list[i];
+    }
+    base.next = &list[0];
+
+    for (int i = 0; i < in->used; i++) {
+        resetBit(in->valueMap[i]);
+        for (int j = 0; j < in->configuration[i]; j++) {
+            auxInt = in->valueConfig[j + in->pointers[i]];
+            setBitTrue(in->valueMap[i], auxList[auxInt]->id);
+            auxList[auxInt]->value = i;
+            listRemove(auxList[auxInt]);
+        }
+        auxList[0] = base.next;
+        if (auxList[0] == NULL) break;
+
+        for (int j = 1; j < in->maxValues[i + 1]; j++) auxList[j] = auxList[j-1]->next;
+    }
+    
+    for (int i = 0; i < in->size; i++) values[i] = list[i].value;
+
+    return;
+}
+
+void listRemove(linkedList * in) {
+    if (in->prev != NULL) {
+        in->prev->next = in->next;
+    }   
+    if (in->next != NULL) {
+        in->next->prev = in->prev;
+    }
 }
 
 void destroyIterator(iterator * it) {
@@ -454,5 +517,188 @@ void printUCI(UCI * in, int printDetail, int shorten) {
                 }
             }
         } 
+    }
+}
+
+bitmap * createBitmap(int size) {
+    bitmap * ret = malloc(sizeof(bitmap));
+    ret->bits = malloc(sizeof(int) * (size/32));
+    ret->size = size;
+    resetBit(ret);
+    return ret;
+}
+
+void destroyBitmap(bitmap * bm) {
+    free(bm->bits);
+    free(bm);
+}
+
+void setBit(bitmap * bm, int pos, int v) {
+    if (v) setBitTrue(bm, pos);
+    if (!v) setBitFalse(bm, pos);
+}
+
+void setBitTrue(bitmap * bm, int pos) {
+    if (pos >= bm->size) return;
+    bm->bits[pos/32] |= 1 << (pos%32);
+}
+
+void setBitFalse(bitmap * bm, int pos) {
+    if (pos >= bm->size) return;
+    bm->bits[pos/32] &= ~(1 << (pos%32));
+}
+
+int getBit(bitmap * bm, int pos) {
+    return (bm->bits[pos/32] & 1 << (pos%32)) ? 1 : 0;
+}
+
+void bitmapXor(bitmap * b1, bitmap * b2, bitmap ** out) {
+    int aux;
+    void * swap;
+    if (b2->size > b1->size) {
+        swap = b2;
+        b2 = b1;
+        b1 = swap;
+    }
+    int a, b;
+    aux = (b1->size - 1)/32;
+    for (int i = 0; i <= aux; i++) {
+        a = b1->bits[i];
+        if (i > ((b2->size) - 1)/32) b = 0;
+        else b = b2->bits[i];
+        (*out)->bits[i] = a^b;
+    }
+    (*out)->bits[(b1->size - 1)/32] &= ~((~0) << (b1->size - 1)%32);
+}
+
+void bitmapOr(bitmap * b1, bitmap * b2, bitmap ** out) {
+    int aux;
+    void * swap;
+    if (b2->size > b1->size) {
+        swap = b2;
+        b2 = b1;
+        b1 = swap;
+    }
+    int a, b;
+    aux = (b1->size - 1)/32;
+    for (int i = 0; i <= aux; i++) {
+        a = b1->bits[i];
+        if (i > ((b2->size) - 1)/32) b = 0;
+        else b = b2->bits[i];
+        (*out)->bits[i] = a|b;
+    }
+    (*out)->bits[(b1->size - 1)/32] &= ~((~0) << (b1->size - 1)%32);
+}
+
+void bitmapAnd(bitmap * b1, bitmap * b2, bitmap ** out) {
+    int aux;
+    void * swap;
+    if (b2->size > b1->size) {
+        swap = b2;
+        b2 = b1;
+        b1 = swap;
+    }
+    int a, b;
+    aux = (b1->size - 1)/32;
+    for (int i = 0; i <= aux; i++) {
+        a = b1->bits[i];
+        if (i > ((b2->size) - 1)/32) b = 0;
+        else b = b2->bits[i];
+        (*out)->bits[i] = a&b;
+    }
+    (*out)->bits[(b1->size - 1)/32] &= ~((~0) << (b1->size - 1)%32);
+}
+
+void bitmapNXor(bitmap * b1, bitmap * b2, bitmap ** out) {
+    int aux;
+    void * swap;
+    if (b2->size > b1->size) {
+        swap = b2;
+        b2 = b1;
+        b1 = swap;
+    }
+    int a, b;
+    aux = (b1->size - 1)/32;
+    for (int i = 0; i <= aux; i++) {
+        a = b1->bits[i];
+        if (i > ((b2->size) - 1)/32) b = 0;
+        else b = b2->bits[i];
+        (*out)->bits[i] = ~(a^b);
+    }
+    (*out)->bits[(b1->size - 1)/32] &= ~((~0) << (b1->size - 1)%32);
+}
+
+void bitmapNOr(bitmap * b1, bitmap * b2, bitmap ** out) {
+    int aux;
+    void * swap;
+    if (b2->size > b1->size) {
+        swap = b2;
+        b2 = b1;
+        b1 = swap;
+    }
+    int a, b;
+    aux = (b1->size - 1)/32;
+    for (int i = 0; i <= aux; i++) {
+        a = b1->bits[i];
+        if (i > ((b2->size) - 1)/32) b = 0;
+        else b = b2->bits[i];
+        (*out)->bits[i] = ~(a|b);
+    }
+    (*out)->bits[(b1->size - 1)/32] &= ~((~0) << (b1->size - 1)%32);
+}
+
+void bitmapNAnd(bitmap * b1, bitmap * b2, bitmap ** out) {
+    int aux;
+    void * swap;
+    if (b2->size > b1->size) {
+        swap = b2;
+        b2 = b1;
+        b1 = swap;
+    }
+    int a, b;
+    aux = (b1->size - 1)/32;
+    for (int i = 0; i <= aux; i++) {
+        a = b1->bits[i];
+        if (i > ((b2->size) - 1)/32) b = 0;
+        else b = b2->bits[i];
+        (*out)->bits[i] = ~(a&b);
+    }
+    (*out)->bits[(b1->size - 1)/32] &= ~((~0) << (b1->size - 1)%32);
+}
+
+void bitmapNot(bitmap * bm) {
+    for (int i = 0; i <= (bm->size - 1)/32; i++) bm->bits[i] = ~bm->bits[i];
+    bm->bits[(bm->size - 1)/32] &= ~((~0) << (bm->size - 1)%32);
+}
+
+int isBitmapZero(bitmap * bm) {
+    bm->bits[(bm->size - 1)/32] &= ~((~0) << (bm->size - 1)%32);
+    for (int i = 0; i <= (bm->size - 1)/32; i++) {
+        if (bm->bits[i]) return 0;
+    }
+    return 1;
+}
+
+void resetBit(bitmap * bm) {
+    int m = (bm->size - 1)/32;
+    for (int i = 0; i <= m; i++) {
+        bm->bits[i] = 0;
+    }
+}
+
+void printBitmap(bitmap * bm) {
+    int aux;
+    printf("Bitmap, size: %d\n", bm->size);
+    for (int i = 0; i <= ((bm->size - 1)/32); i++) {
+        aux = bm->bits[i];
+        printf("[");
+        for (int j = 0; j < 32; j++) {
+            printf("%d", (aux >> j)&1);
+            if (((i == (bm->size - 1)/32) && (j == bm->size%32 - 1)) || (j == 31)) {
+                break;
+            } 
+            printf(", ");
+        }
+        printf("]\n");
     }
 }

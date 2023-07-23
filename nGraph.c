@@ -8,7 +8,7 @@ graph * createGraph(int vertexCount, int edgeCount, int* edges) {
     graph * ret = malloc(sizeof(graph));
     edge * cEdge;
     vertex * cVertex;
-    int v1, v2, c1, c2, delta = 0;
+    int v1, v2, c1, c2, delta = 0, nextBreak;
     ret->edgeList = malloc(sizeof(edge *) * edgeCount);
     ret->vertexList = malloc(sizeof(vertex *) * vertexCount);
     ret->edgeCount = edgeCount;
@@ -46,6 +46,7 @@ graph * createGraph(int vertexCount, int edgeCount, int* edges) {
         v1 = cVertex->degree;
         cVertex->neighboors = realloc(cVertex->neighboors, sizeof(neighboorData) * v1);
         if (v1 > delta) delta = v1;
+        cVertex->neighboorMap = createBitmap(ret->vertexCount);
     }
     
     ret->delta = delta;
@@ -63,17 +64,22 @@ graph * createGraph(int vertexCount, int edgeCount, int* edges) {
         ret->vertexList[v2]->neighboors[c2].edge = cEdge;
         ret->vertexList[v1]->color++;
         ret->vertexList[v2]->color++;
+
     }
+
+    
 
     for (int i = 0; i < vertexCount; i++) {
         cVertex = ret->vertexList[i];
         cVertex->color = -1;
         qsort(cVertex->neighboors, cVertex->degree, sizeof(neighboorData), neighboorCmp);
         cVertex->nextNeighboorID = -1;
+        nextBreak = 0;
         for (int j = 0; j < cVertex->degree; j++) {
-            if (cVertex->id < cVertex->neighboors[j].vertex->id) {
+            setBitTrue(cVertex->neighboorMap, cVertex->neighboors[j].vertex->id);
+            if (!nextBreak && cVertex->id < cVertex->neighboors[j].vertex->id) {
                 cVertex->nextNeighboorID = j;
-                break;
+                nextBreak = 1;
             }
         }
         if (cVertex->nextNeighboorID == -1) cVertex->nextNeighboorID = cVertex->degree;
@@ -147,6 +153,7 @@ graph * transformGraph(graph * in, transformKey ** out) {
         }       
     }
     *out = outKey;
+
     return createGraph(newVertexCount, newEdgeCount, edgeList);
 }
 
@@ -164,32 +171,74 @@ vertex * createVertex() {
 
 void vertexGraphColoring(graph * in) {
     int vertC = in->vertexCount;
-    iterator * it = createIterator(vertC, NULL, vertC); // Valor máximo de Cores possíveis é o número de vértices
-    unsigned long long int type2 = 0, c = 0, c2 = 0;
-
+    int currentCount = 2;
+    iterator * it = createIterator(vertC, NULL, currentCount); // Valor máximo de Cores possíveis é delta+2
+    edge * e = in->edgeList[0];
+    lockValue(it, e->incidentVertex1->id, 0);   // Trivial encontrar clique de tamanho 2,
+    lockValue(it, e->incidentVertex2->id, 1);   // Portanto pode-se bloquear 2 elementos.
+    unsigned long long int c = 0, c2 = 0;
+    clock_t t1, t2, t3;
+    t1 = clock();
+    t3 = clock();
     while (!validateColoring(in, it)) {
         c++;
         if (c == 1000000000) {
-            printf("%llu bilhoes de iteracoes testadas. Iteracao atual:\n", c2);
-            printIterator(it);
+            t2 = clock();
             c2++;
+            printf("%llu bilhoes de iteracoes testadas em %.3lf segundos (ciclo em %.3lf s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
+            printIterator(it);
             c = 0;
+            t3 = clock();
         }
         if (iterate(it) == 1) {
-            it->maxValue++;
-            if (!type2) type2 = 1;
-            else {
-                printf("Alguma coisa deu muito errado:\n Não foi possivel fazer a coloracao total com delta + 1 ou delta + 2 cores.\n");
+            destroyIterator(it);
+            currentCount++;
+            if (currentCount > in->delta + 2) {
+                printf("Alguma coisa deu muito errado:\n Não foi possivel fazer a coloracao de vertices com ate delta + 2 cores.\n");
                 return;
             } 
+            it = createIterator(vertC, NULL, currentCount);
+            lockValue(it, e->incidentVertex1->id, 0);   // Trivial encontrar clique de tamanho 2,
+            lockValue(it, e->incidentVertex2->id, 1);   // Portanto pode-se bloquear 2 elementos.
         }
     }
 
-    printf("Coloracao encontrada depois de %llu%09llu iteracoes.\nO grafo e tipo %d\n", c2, c, (type2) ? 2 : 1);
+    printf("Coloracao encontrada depois de %llu%09llu iteracoes usando %d cores.\n", c2, c, currentCount);
     setColor(in, it);
     printIterator(it);
-    printGraph(in, 1, 1, 1);
+    printGraph(in, 1, 0, 1);
     destroyIterator(it);
+}
+
+void vertexGraphColoringUCI(graph * in) {
+    int vertC = in->vertexCount;
+    UCI * uci = createUCI(in->delta + 1, vertC, 1, 1);
+    bitmap * validBm = createBitmap(vertC);
+    clock_t t1, t2, t3;
+    unsigned long long int type2 = 0, c = 0, c2 = 0;
+    t1 = clock();
+    t3 = clock();
+    while (!validateColoringUCI(in, uci)) {
+        c++;
+        if (c == 100000000) {
+            t2 = clock();
+            c2++;
+            printf("%llu centenas de milhao de iteracoes testadas em %.3lf segundos (ciclo em %.3lf s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
+            printUCI(uci, 1, 0);
+            printf("\n");
+            c = 0;
+            t3 = clock();
+        }
+        if (iterateUCI(uci) == 1) {
+            printf("Alguma coisa deu muito errado:\n Nao foi possivel fazer a coloracao de vértices até delta + 2 cores.\n");
+            return;
+        }
+    }
+    printf("Coloracao encontrada depois de %llu%09llu iteracoes usando %d cores.\n", c2, c, uci->used);
+    setColorUCI(in, uci);
+    printUCI(uci, 1, 0);
+    printGraph(in, 0, 0, 1);
+    destroyUCI(uci);
 }
 
 void totalGraphColoring(graph * in) {
@@ -200,20 +249,25 @@ void totalGraphColoring(graph * in) {
     int *startValue = NULL;
     iterator * it = createIterator(trans->vertexCount, startValue, in->delta + 2);
     unsigned long long int type2 = 1, c = 0, c2 = 1;
+    clock_t t1, t2, t3;
     lockValue(it, transMax->id, c++);
     for (int i = 0; i < transMax->degree; i++) {
         if (transMax->neighboors[i].vertex->id >= in->vertexCount)
             lockValue(it, transMax->neighboors[i].vertex->id, c++);
     }
-
+    c = 0;
+    t1 = clock();
+    t3 = clock();
     while (!validateColoring(trans, it)) {
         c++;
         if (c == 1000000000) {
-            printf("%llu bilhoes de iteracoes testadas. Iteracao atual:\n", c2);
+            t2 = clock();
+            printf("%llu bilhoes de iteracoes testadas em %.3lf segundos (ciclo em %.3lf s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
             printIterator(it);
             printf("\n");
             c2++;
             c = 0;
+            t3 = clock();
         }
         if (iterate(it) == 1) {
             it->maxValue++;
@@ -241,43 +295,46 @@ void totalGraphColoringUCI(graph * in) {
     graph * trans = transformGraph(in, &tK);
     vertex * max = findMaxDegreeVertex(in);
     vertex * transMax = trans->vertexList[max->id];
+    bitmap * validBm = createBitmap(trans->vertexCount);
     UCI * uci = createUCI(in->delta + 1, trans->vertexCount, 0, 1);
-    uci->configuration[0] = 8;
-    uci->configuration[1] = 7;
-    uci->configuration[2] = 7;
-    uci->configuration[3] = 1;
-    uci->configuration[4] = 1;
+    /*/
+    uci->configuration[0] = 3;
+    uci->configuration[1] = 3;
+    uci->configuration[2] = 3;
+    uci->configuration[3] = 3;
+    uci->configuration[4] = 3;
     uci->configuration[5] = 0;
-    int configVal[] = {0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 7, 0, 0};
+    UCIResetBase(uci);
+    int config[] = {0, 10, 11, 0, 7, 10, 0, 3, 8, 0, 2, 5, 0, 1, 2};
     for (int i = 0; i < uci->size; i++) {
-        uci->valueConfig[i] = configVal[i];
+        uci->valueConfig[i] = config[i];
     }
-    uci->maxValues[0] = uci->size;
-    uci->pointers[0] = 0;
-    uci->used = 0;
-    for (int i = 0; i < uci->limit - 1; i++) {
-        uci->maxValues[i + 1] = uci->maxValues[i] - uci->configuration[i];
-        uci->pointers[i + 1] = uci->pointers[i] + uci->configuration[i];
-    }
-    unsigned long long int type2 = 1, c = 9999999, c2 = 136000;
-
-
+    //*/
+    unsigned long long int type2 = 0, c = 0, c2 = 0;
+    clock_t t1, t2, t3;
+    t1 = clock();
+    t3 = clock();
     while (!validateColoringUCI(trans, uci)) {
+        
         c++;
-        if (c == 10000000) {
-            printf("%llu dezenas de milhoes de iteracoes testadas. Iteracao atual:\n", c2);
+        if (c == 100000000) {
+            t2 = clock();
+            c2++;
+            printf("%llu centenas de milhao de iteracoes testadas em %.3lf segundos (ciclo em %.3lf s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
             printUCI(uci, 1, 0);
             printf("\n");
-            c2++;
             c = 0;
+            t3 = clock();
         }
         if (iterateUCI(uci) == 1) {
-            printf("Alguma coisa deu muito errado:\n Não foi possivel fazer a coloracao total com delta + 1 ou delta + 2 cores.\n");
+            printf("Alguma coisa deu muito errado:\n Nao foi possivel fazer a coloracao total com delta + 1 ou delta + 2 cores.\n");
             return;
         }
     }
-    printf("Coloracao encontrada depois de %llu%07llu iteracoes.\nO grafo e tipo %d\n", c2, c, (type2) ? 2 : 1);
+    if (uci->configuration[uci->limit - 1] != 0) type2 = 1;
+    printf("Coloracao encontrada em %llu%07llu iteracoes.\nO grafo e tipo %d\n", c2, c, (type2) ? 2 : 1);
     
+    destroyBitmap(validBm);
     setColorUCI(trans, uci);
     translateColorToOriginalGraph(in, trans);
     printUCI(uci, 1, 0);
@@ -314,6 +371,17 @@ int validateColoringUCI(graph * in, UCI * uci) {
         }
     }
     free(values);
+    return 1;
+}
+
+int validateColoringUCI2(graph * in, UCI * uci, bitmap * bm) {
+    UCIGetValues2(uci);
+
+    for (int i = 0; i < in->vertexCount; i++) {
+        bitmapAnd(uci->valueMap[uci->values[i]], in->vertexList[i]->neighboorMap, &bm);
+        if (!isBitmapZero(bm)) return 0;
+    }
+
     return 1;
 }
 
@@ -400,6 +468,7 @@ void destroyEdge(edge * e) {
 
 void destroyVertex(vertex * v) {
     free(v->neighboors);
+    destroyBitmap(v->neighboorMap);
     free(v);
 }
 
