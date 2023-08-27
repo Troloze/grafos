@@ -97,6 +97,7 @@ graph * transformGraph(graph * in, transformKey ** out) {
     transformKey * outKey;
     edge * currentEdge;
     vertex * currentVertex;
+    graph * ret;
     for (int i = 0; i < in->edgeCount; i++) {
         newEdgeCount += in->edgeList[i]->degree;
     }
@@ -153,8 +154,9 @@ graph * transformGraph(graph * in, transformKey ** out) {
         }       
     }
     *out = outKey;
-
-    return createGraph(newVertexCount, newEdgeCount, edgeList);
+    ret = createGraph(newVertexCount, newEdgeCount, edgeList);
+    free(edgeList);
+    return ret;
 }
 
 edge * createEdge() {
@@ -177,19 +179,35 @@ void vertexGraphColoring(graph * in) {
     lockValue(it, e->incidentVertex1->id, 0);   // Trivial encontrar clique de tamanho 2,
     lockValue(it, e->incidentVertex2->id, 1);   // Portanto pode-se bloquear 2 elementos.
     unsigned long long int c = 0, c2 = 0;
-    clock_t t1, t2, t3;
+    clock_t t1, t2, t3, t4;
+    char * p;
+    FILE * f;
     t1 = clock();
     t3 = clock();
+    t4 = clock();
     while (!validateColoring(in, it)) {
+#ifdef STORE_BACKUP
+        t2 = clock();
+        if (t2 - t4 > BACKUP_TIME_SECS) {
+            f = fopen("BackupIt.txt", "w");
+            p = IteratorToString(it);
+            fprintf(f, "Vertex Iterator:\n%s", p);
+            fclose(f);
+            free(p);
+            t4 = clock();
+        }
+#endif
+#ifndef NO_PRINT
         c++;
-        if (c == 1000000000) {
+        if (c == 10000000) {
             t2 = clock();
             c2++;
-            printf("%llu bilhoes de iteracoes testadas em %.3lf segundos (ciclo em %.3lf s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
+            printf("%llu bilhoes de iteracoes testadas em %.3f segundos (ciclo em %.3f s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
             printIterator(it);
             c = 0;
             t3 = clock();
         }
+#endif
         if (iterate(it) == 1) {
             destroyIterator(it);
             currentCount++;
@@ -202,11 +220,13 @@ void vertexGraphColoring(graph * in) {
             lockValue(it, e->incidentVertex2->id, 1);   // Portanto pode-se bloquear 2 elementos.
         }
     }
-
-    printf("Coloracao encontrada depois de %llu%09llu iteracoes usando %d cores.\n", c2, c, currentCount);
+    in->chroma = it->maxValue;
     setColor(in, it);
+#ifndef NO_PRINT
+    printf("Coloracao encontrada depois de %llu%09llu iteracoes usando %d cores.\n", c2, c, currentCount);
     printIterator(it);
     printGraph(in, 1, 0, 1);
+#endif
     destroyIterator(it);
 }
 
@@ -214,30 +234,53 @@ void vertexGraphColoringUCI(graph * in) {
     int vertC = in->vertexCount;
     UCI * uci = createUCI(in->delta + 1, vertC, 1, 1);
     bitmap * validBm = createBitmap(vertC);
-    clock_t t1, t2, t3;
+    clock_t t1, t2, t3, t4;
     unsigned long long int type2 = 0, c = 0, c2 = 0;
+    char * p;
+    FILE * f;
     t1 = clock();
     t3 = clock();
-    while (!validateColoringUCI(in, uci)) {
+    t4 = clock();
+    while (!validateColoringUCI2(in, uci, validBm)) {
+#ifdef STORE_BACKUP
+        t2 = clock();
+        if (t2 - t4 > BACKUP_TIME_SECS) {
+            f = fopen("BackupIt.txt", "w");
+            p = UCIToString(uci);
+            fprintf(f, "Vertex UCI:\n%s", p);
+            fclose(f);
+            free(p);
+            t4 = clock();
+        }
+#endif
+#ifndef NO_PRINT
         c++;
         if (c == 100000000) {
             t2 = clock();
             c2++;
-            printf("%llu centenas de milhao de iteracoes testadas em %.3lf segundos (ciclo em %.3lf s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
+            p = UCIToString(uci);
+            
+            free(p);
+            printf("%llu centenas de milhao de iteracoes testadas em %.3f segundos (ciclo em %.3f s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
             printUCI(uci, 1, 0);
             printf("\n");
             c = 0;
             t3 = clock();
         }
+#endif
+
         if (iterateUCI(uci) == 1) {
             printf("Alguma coisa deu muito errado:\n Nao foi possivel fazer a coloracao de vértices até delta + 2 cores.\n");
             return;
         }
     }
-    printf("Coloracao encontrada depois de %llu%09llu iteracoes usando %d cores.\n", c2, c, uci->used);
+    in->chroma = uci->used;
     setColorUCI(in, uci);
+#ifndef NO_PRINT
+    printf("Coloracao encontrada depois de %llu%08llu iteracoes usando %d cores.\n", c2, c, uci->used);
     printUCI(uci, 1, 0);
     printGraph(in, 0, 0, 1);
+#endif
     destroyUCI(uci);
 }
 
@@ -247,9 +290,11 @@ void totalGraphColoring(graph * in) {
     vertex * max = findMaxDegreeVertex(in);
     vertex * transMax = trans->vertexList[max->id];
     int *startValue = NULL;
-    iterator * it = createIterator(trans->vertexCount, startValue, in->delta + 2);
-    unsigned long long int type2 = 1, c = 0, c2 = 1;
-    clock_t t1, t2, t3;
+    iterator * it = createIterator(trans->vertexCount, startValue, in->delta + 1);
+    unsigned long long int type2 = 0, c = 0, c2 = 1;
+    clock_t t1, t2, t3, t4;
+    char * p;
+    FILE * f;
     lockValue(it, transMax->id, c++);
     for (int i = 0; i < transMax->degree; i++) {
         if (transMax->neighboors[i].vertex->id >= in->vertexCount)
@@ -258,17 +303,31 @@ void totalGraphColoring(graph * in) {
     c = 0;
     t1 = clock();
     t3 = clock();
+    t4 = clock();
     while (!validateColoring(trans, it)) {
+#ifdef STORE_BACKUP
+        t2 = clock();
+        if (t2 - t4 > BACKUP_TIME_SECS) {
+            f = fopen("BackupIt.txt", "w");
+            p = IteratorToString(it);
+            fprintf(f, "Total Iterator:\n%s", p);
+            fclose(f);
+            free(p);
+            t4 = clock();
+        }
+#endif
+#ifndef NO_PRINT
         c++;
         if (c == 1000000000) {
             t2 = clock();
-            printf("%llu bilhoes de iteracoes testadas em %.3lf segundos (ciclo em %.3lf s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
+            printf("%llu bilhoes de iteracoes testadas em %.3f segundos (ciclo em %.3f s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
             printIterator(it);
             printf("\n");
             c2++;
             c = 0;
             t3 = clock();
         }
+#endif
         if (iterate(it) == 1) {
             it->maxValue++;
             if (!type2) type2 = 1;
@@ -278,13 +337,15 @@ void totalGraphColoring(graph * in) {
             } 
         }
     }
-    printf("Coloracao encontrada depois de %llu%09llu iteracoes.\nO grafo e tipo %d\n", c2, c, (type2) ? 2 : 1);
-    
+    in->chroma = it->maxValue;
     setColor(trans, it);
     translateColorToOriginalGraph(in, trans);
+#ifndef NO_PRINT
+    printf("Coloracao encontrada depois de %llu%09llu iteracoes.\nO grafo e tipo %d\n", c2, c, (type2) ? 2 : 1);
     printIterator(it);
     printGraph(trans, 1, 0, 1);
     printGraph(in, 1, 1, 1);
+#endif
     destroyIterator(it);
     destroyTransformKey(tK);
     destroyGraph(trans);
@@ -311,35 +372,55 @@ void totalGraphColoringUCI(graph * in) {
     }
     //*/
     unsigned long long int type2 = 0, c = 0, c2 = 0;
-    clock_t t1, t2, t3;
+    clock_t t1, t2, t3, t4;
+    FILE * f;
+    char * p;
     t1 = clock();
     t3 = clock();
+    t4 = clock();
     while (!validateColoringUCI(trans, uci)) {
-        
+#ifdef STORE_BACKUP
+        t2 = clock();
+        if (t2 - t4 > BACKUP_TIME_SECS) {
+            f = fopen("BackupIt.txt", "w");
+            p = UCIToString(uci);
+            fprintf(f, "Total UCI:\n%s", p);
+            fclose(f);
+            free(p);
+            t4 = clock();
+        }
+#endif     
+#ifndef NO_PRINT 
         c++;
         if (c == 100000000) {
-            t2 = clock();
             c2++;
-            printf("%llu centenas de milhao de iteracoes testadas em %.3lf segundos (ciclo em %.3lf s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
+
+            t2 = clock();
+            printf("%llu centenas de milhao de iteracoes testadas em %.3f segundos (ciclo em %.3f s).\n Iteracao atual:\n", c2, (t2 - t1 * 1.0)/CLOCKS_PER_SEC, (t2 - t3 * 1.0)/CLOCKS_PER_SEC);
             printUCI(uci, 1, 0);
             printf("\n");
-            c = 0;
             t3 = clock();
+            c = 0;
         }
+#endif
         if (iterateUCI(uci) == 1) {
             printf("Alguma coisa deu muito errado:\n Nao foi possivel fazer a coloracao total com delta + 1 ou delta + 2 cores.\n");
             return;
         }
     }
     if (uci->configuration[uci->limit - 1] != 0) type2 = 1;
-    printf("Coloracao encontrada em %llu%07llu iteracoes.\nO grafo e tipo %d\n", c2, c, (type2) ? 2 : 1);
-    
+    in->chroma = uci->used;
+    //printUCI(uci, 1, 0);
+    //printGraph(in, 1, 1, 1);
     destroyBitmap(validBm);
     setColorUCI(trans, uci);
     translateColorToOriginalGraph(in, trans);
+#ifndef NO_PRINT
+    printf("Coloracao encontrada em %llu%08llu iteracoes.\nO grafo e tipo %d\n", c2, c, (type2) ? 2 : 1);
     printUCI(uci, 1, 0);
     printGraph(trans, 1, 0, 1);
     printGraph(in, 1, 1, 1);
+#endif
     destroyUCI(uci);
     destroyTransformKey(tK);
     destroyGraph(trans);

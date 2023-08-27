@@ -1,395 +1,244 @@
+#define NO_PRINT
+#define STORE_BACKUP
 #include "nGraph.h"
+#include <windows.h>
+
+typedef struct precisionClock {
+    double frequency;
+    __int64 start;
+} pC;
+
+void runThroughGraphs(int order, int startingGraph, int startAtType, int stopAfterOne);
+
+void runCompleteGraphs(int orderStart, int orderEnd);
+
+pC startCounter() {
+    pC ret;
+    LARGE_INTEGER li;
+    if (!QueryPerformanceFrequency(&li)) printf("Algo deu errado pra caramba\n");
+    ret.frequency = (double) li.QuadPart;
+
+    QueryPerformanceCounter(&li);
+    ret.start = li.QuadPart;
+    return ret;
+}
+
+double getCounter(pC in) {
+    LARGE_INTEGER li;
+    QueryPerformanceCounter(&li);
+    return (double) (li.QuadPart - in.start)/in.frequency;
+}
 
 int main (int argc, char** argv) {
-
-    int _bD[] = {4, 5};
-    int _b[] = {
-        0, 1,
-        0, 2,
-        0, 3,
-        1, 2,
-        2, 3
-    };
-
-    int _eD[] = {5, 6};
-    int _e[] = {
-        0, 1, 
-        0, 2, 
-        0, 4, 
-        1, 2, 
-        2, 3, 
-        3, 4
-    };
-
-    int _k5D[] = {5, 10};
-    int _k5[] = {
-        0, 1,
-        0, 2,
-        0, 3,
-        0, 4,
-        1, 2,
-        1, 3,
-        1, 4,
-        2, 3,
-        2, 4,
-        3, 4
-    };
-
-    int _k6D[] = {6, 15};
-    int _k6[] = {
-        0, 1,
-        0, 2,
-        0, 3,
-        0, 4,
-        0, 5,
-        1, 2,
-        1, 3,
-        1, 4,
-        1, 5,
-        2, 3,
-        2, 4,
-        2, 5,
-        3, 4,
-        3, 5,
-        4, 5
-    };
-
-    int _bipD[] = {9, 9};
-    int _bip[] = {
-        0, 5,
-        0, 7,
-        1, 5,
-        1, 6,
-        2, 7,
-        2, 8,
-        3, 6,
-        4, 5,
-        4, 8    
-    };
-
-    int _k44D[] = {8, 16};
-    int _k44[] = {
-        0, 4,
-        1, 4,
-        2, 4,
-        3, 4,
-        0, 5,
-        1, 5,
-        2, 5,
-        3, 5,
-        0, 6,
-        1, 6,
-        2, 6,
-        3, 6,
-        0, 7,
-        1, 7,
-        2, 7,
-        3, 7
-    };
     
-    int _k10D[] = {10, 45};
-    int _k10[] = {
-        0, 1,
-        0, 2,
-        0, 3,
-        0, 4,
-        0, 5,
-        0, 6,
-        0, 7,
-        0, 8,
-        0, 9,
-        1, 2,
-        1, 3,
-        1, 4,
-        1, 5,
-        1, 6,
-        1, 7,
-        1, 8,
-        1, 9,
-        2, 3,
-        2, 4,
-        2, 5,
-        2, 6,
-        2, 7,
-        2, 8,
-        2, 9,
-        3, 4,
-        3, 5,
-        3, 6,
-        3, 7,
-        3, 8,
-        3, 9,
-        4, 5,
-        4, 6,
-        4, 7,
-        4, 8,
-        4, 9,
-        5, 6,
-        5, 7,
-        5, 8,
-        5, 9,
-        6, 7,
-        6, 8,
-        6, 9,
-        7, 8,
-        7, 9,
-        8, 9
-    };
+    //for (int i = 2; i <= 8; i++)
+        runCompleteGraphs(13, 15);
 
-    int _k20D[] = {20, 190};
-    int _k20[] = {
-        0, 1,
-        0, 2,
-        0, 3,
-        0, 4,
-        0, 5,
-        0, 6,
-        0, 7,
-        0, 8,
-        0, 9,
-        0, 10,
-        0, 11,
-        0, 12,
-        0, 13,
-        0, 14,
-        0, 15,
-        0, 16,
-        0, 17,
-        0, 18,
-        0, 19,
-        1, 2,
-        1, 3,
-        1, 4,
-        1, 5,
-        1, 6,
-        1, 7,
-        1, 8,
-        1, 9,
-        1, 10,
-        1, 11,
-        1, 12,
-        1, 13,
-        1, 14,
-        1, 15,
-        1, 16,
-        1, 17,
-        1, 18,
-        1, 19,
-        2, 3,
-        2, 4,
-        2, 5,
-        2, 6,
-        2, 7,
-        2, 8,
-        2, 9,
-        2, 10,
-        2, 11,
-        2, 12,
-        2, 13,
-        2, 14,
-        2, 15,
-        2, 16,
-        2, 17,
-        2, 18,
-        2, 19,
-        3, 4,
-        3, 5,
-        3, 6,
-        3, 7,
-        3, 8,
-        3, 9,
-        3, 10,
-        3, 11,
-        3, 12,
-        3, 13,
-        3, 14,
-        3, 15,
-        3, 16,
-        3, 17,
-        3, 18,
-        3, 19,
-        4, 5,
-        4, 6,
-        4, 7,
-        4, 8,
-        4, 9,
-        4, 10,
-        4, 11,
-        4, 12,
-        4, 13,
-        4, 14,
-        4, 15,
-        4, 16,
-        4, 17,
-        4, 18,
-        4, 19,
-        5, 6,
-        5, 7,
-        5, 8,
-        5, 9,
-        5, 10,
-        5, 11,
-        5, 12,
-        5, 13,
-        5, 14,
-        5, 15,
-        5, 16,
-        5, 17,
-        5, 18,
-        5, 19,
-        6, 7,
-        6, 8,
-        6, 9,
-        6, 10,
-        6, 11,
-        6, 12,
-        6, 13,
-        6, 14,
-        6, 15,
-        6, 16,
-        6, 17,
-        6, 18,
-        6, 19,
-        7, 8,
-        7, 9,
-        7, 10,
-        7, 11,
-        7, 12,
-        7, 13,
-        7, 14,
-        7, 15,
-        7, 16,
-        7, 17,
-        7, 18,
-        7, 19,
-        8, 9,
-        8, 10,
-        8, 11,
-        8, 12,
-        8, 13,
-        8, 14,
-        8, 15,
-        8, 16,
-        8, 17,
-        8, 18,
-        8, 19,
-        9, 10,
-        9, 11,
-        9, 12,
-        9, 13,
-        9, 14,
-        9, 15,
-        9, 16,
-        9, 17,
-        9, 18,
-        9, 19,
-        10, 11,
-        10, 12,
-        10, 13,
-        10, 14,
-        10, 15,
-        10, 16,
-        10, 17,
-        10, 18,
-        10, 19,
-        11, 12,
-        11, 13,
-        11, 14,
-        11, 15,
-        11, 16,
-        11, 17,
-        11, 18,
-        11, 19,
-        12, 13,
-        12, 14,
-        12, 15,
-        12, 16,
-        12, 17,
-        12, 18,
-        12, 19,
-        13, 14,
-        13, 15,
-        13, 16,
-        13, 17,
-        13, 18,
-        13, 19,
-        14, 15,
-        14, 16,
-        14, 17,
-        14, 18,
-        14, 19,
-        15, 16,
-        15, 17,
-        15, 18,
-        15, 19,
-        16, 17,
-        16, 18,
-        16, 19,
-        17, 18,
-        17, 19,
-        18, 19,
-    };
-
-/*/
-    int * a;
-    UCI * it = createUCI(5, 8, 1, 0);
-    printf("Teste\n");
-//*
-    int conf[] = {1, 7, 1, 5, 1, 3, 0, 0};
-    it->configuration[0] = 2;
-    it->configuration[1] = 2;
-    it->configuration[2] = 2;
-    it->configuration[3] = 1;
-    it->configuration[4] = 1;
-    UCIResetBase(it);
-    
-    for (int i = 0; i < it->size; i++) {
-        it->valueConfig[i] = conf[i];
-    }  
-//*
-//*
-    printUCI(it, 1, 0);
-    do {
-        getchar();
-        printf("\n");
-        if (iterateUCI(it) == 1) break;
-        a = UCIGetValues(it);
-        printUCI(it, 1, 0);
-        printf("Values: [");
-        for (int i = 0; i < it->size; i++) {
-            printf("%d, ", a[i]);
-        }
-        printf("]\n");
-        free(a);
-    } while(1);
-    printUCI(it, 1, 0);
-//*/    
-/*/
-    printUCI(it, 0, 0);
-    iterateUCI(it);
-    printUCI(it, 0, 0);
-    iterateUCI(it);
-    printUCI(it, 0, 0);
-    iterateUCI(it);
-    printUCI(it, 1, 0);
-//*
-    destroyUCI(it);
-//*/
-//*/
-
-    clock_t start = clock(), end;
-
-    graph * b = createGraph(_k20D[0], _k20D[1], _k20);
-//*
-    vertexGraphColoringUCI(b);
-    //totalGraphColoringUCI(b);
-    end = clock();
-    printf("Tempo total: %.2lf segundos\n", (end - start) / CLOCKS_PER_SEC);
-
-    destroyGraph(b);
-    
-
-//*/
-    printf("Success\n");
     return 0;
+}
+
+void runThroughGraphs(int order, int startingGraph, int startAtType, int stopAfterOne) {
+    int graph_n = 0, currentGraphN = 0, vertexCount, edgeCount, * edges, lineCount;
+    pC clk;
+    double counterTime;
+    char buffer[256] = "", fileName[256] = "";
+    graph * currentGraph;
+    sprintf(fileName, "Graphs\\graphs%dc.txt", order);
+    FILE * f = fopen(fileName, "r");
+    if (f == NULL) {
+        fclose(fopen(fileName, "w"));
+        f = fopen(fileName, "r");
+    }
+    fgets(buffer, 256, f);
+    sscanf(buffer, "%d", &graph_n);
+    printf("%d\n", graph_n);
+    if (startingGraph > graph_n) {
+        fclose(f);
+        return;
+    }
+
+    if (startingGraph > 0) {
+        for (int i = 0; i < startingGraph; i++) {
+            fgets(buffer, 256, f);
+            fgets(buffer, 256, f);
+            sscanf(buffer, "%d %d", &vertexCount, &edgeCount);
+            for (int k = 0; k <= (edgeCount - 1)/15; k++) {
+                fgets(buffer, 256, f);
+            }
+            fgets(buffer, 256, f);
+            }
+    }
+    
+    while (currentGraphN != graph_n) {
+        fgets(buffer, 256, f);
+        sscanf(buffer, "Graph %d, order 7.", &currentGraphN);
+        fgets(buffer, 256, f);
+        sscanf(buffer, "%d %d", &vertexCount, &edgeCount);
+        printf("Currently working on order %d graph %d with %d edges.\n", vertexCount, currentGraphN, edgeCount);
+        edges = malloc(sizeof(int) * 2 * edgeCount);
+        lineCount = 14;
+        for (int k = 0; k <= (edgeCount - 1)/15; k++) {
+            fgets(buffer, 256, f);
+            if (k == (edgeCount - 1)/15) lineCount = (edgeCount - 1)%15;
+            for (int i = 0; i <= lineCount; i++) {
+                sscanf(&buffer[i * 5], "%d %d", &edges[(i + k * 15) * 2], &edges[(i + k * 15) * 2 + 1]);
+                //printf("[%d, %d]\n", edges[(i + k * 15)  * 2], edges[(i + k * 15) * 2 + 1]);
+            }
+        }
+
+        fgets(buffer, 256, f);
+        fclose(f);
+        currentGraph = createGraph(vertexCount, edgeCount, edges);
+        free(edges);
+        //printf("Currently working on order %d graph %d.\n", order, currentGraphN);
+        switch (startAtType)
+        {
+        case 0:
+            goto TYPE_VERTEX_IT;
+        case 1:
+            goto TYPE_VERTEX_UCI;
+        case 2:
+            goto TYPE_TOTAL_IT;
+        case 3:
+            goto TYPE_TOTAL_UCI;
+        }
+
+TYPE_VERTEX_IT:
+        printf("Working on Vertex Iterator.\n");
+        f = fopen("Backup.txt", "w");
+        fprintf(f, "Order: %d, Graph: %d.\nVertex Iterator.\n", order, currentGraphN);
+        fclose(f);
+        
+        clk = startCounter();
+        vertexGraphColoring(currentGraph);
+        counterTime = getCounter(clk);
+        printf("Done: %.6f\n", counterTime);
+        fclose(fopen("BackupIt.txt", "w"));
+        f = fopen("Results.txt", "a+");
+        fprintf(f, "<order:%d, edges:%d, delta:%d, colors: %d, graph:%d, type:0, time:%.6f>\n", order, currentGraph->edgeCount, currentGraph->delta, currentGraph->chroma, currentGraphN, counterTime);
+        fclose(f);
+TYPE_VERTEX_UCI:
+        printf("Working on Vertex UCI.\n");
+        f = fopen("Backup.txt", "w");
+        fprintf(f, "Order: %d, Graph: %d.\nVertex UCI.\n", order, currentGraphN);
+        fclose(f);
+        
+        clk = startCounter();
+        vertexGraphColoringUCI(currentGraph);
+        counterTime = getCounter(clk);
+        printf("Done: %.6f\n", counterTime);
+        fclose(fopen("BackupIt.txt", "w"));
+        f = fopen("Results.txt", "a+");
+        fprintf(f, "<order:%d, edges:%d, delta:%d, colors: %d, graph:%d, type:1, time:%.6f>\n", order, currentGraph->edgeCount, currentGraph->delta, currentGraph->chroma, currentGraphN, counterTime);
+        fclose(f);
+
+
+        if (vertexCount + edgeCount > 15) {
+            destroyGraph(currentGraph);
+            currentGraph = NULL;
+            if (stopAfterOne || currentGraphN == graph_n) {
+                break;
+            }
+            f = fopen(fileName, "r");
+            fgets(buffer, 256, f);
+            for (int i = 0; i < currentGraphN; i++) {
+                fgets(buffer, 256, f);
+                fgets(buffer, 256, f);
+                sscanf(buffer, "%d %d", &vertexCount, &edgeCount);
+                for (int k = 0; k <= (edgeCount - 1)/15; k++) {
+                    fgets(buffer, 256, f);
+                }
+                fgets(buffer, 256, f);
+            }
+            continue;
+        }
+TYPE_TOTAL_IT:
+        printf("Working on Total Iterator.\n");
+        f = fopen("Backup.txt", "w");
+        fprintf(f, "Order: %d, Graph: %d.\nTotal Iterator.\n", order, currentGraphN);
+        fclose(f);
+        
+        clk = startCounter();
+        totalGraphColoring(currentGraph);
+        counterTime = getCounter(clk);
+        printf("Done: %.6f\n", counterTime);
+        fclose(fopen("BackupIt.txt", "w"));
+        f = fopen("Results.txt", "a+");
+        fprintf(f, "<order:%d, edges:%d, delta:%d, colors: %d, graph:%d, type:2, time:%.6f>\n", order, currentGraph->edgeCount, currentGraph->delta, currentGraph->chroma, currentGraphN, counterTime);
+        fclose(f);
+
+
+TYPE_TOTAL_UCI:
+        printf("Working on Total UCI.\n");
+        f = fopen("Backup.txt", "w");
+        fprintf(f, "Order: %d, Graph: %d.\nTotal UCI.\n", order, currentGraphN);
+        fclose(f);
+        
+        clk = startCounter();
+        totalGraphColoringUCI(currentGraph);
+        counterTime = getCounter(clk);
+        printf("Done: %.6f\n", counterTime);
+        fclose(fopen("BackupIt.txt", "w"));
+        f = fopen("Results.txt", "a+");
+        fprintf(f, "<order:%d, edges:%d, delta:%d, colors: %d, graph:%d, type:3, time:%.6f>\n", order, currentGraph->edgeCount, currentGraph->delta, currentGraph->chroma, currentGraphN, counterTime);
+        fclose(f);
+        destroyGraph(currentGraph);
+        currentGraph = NULL;
+        if (stopAfterOne || currentGraphN == graph_n) {
+            break;
+        }
+        f = fopen(fileName, "r");
+        fgets(buffer, 256, f);
+        for (int i = 0; i < currentGraphN; i++) {
+            fgets(buffer, 256, f);
+            fgets(buffer, 256, f);
+            sscanf(buffer, "%d %d", &vertexCount, &edgeCount);
+            for (int k = 0; k <= (edgeCount - 1)/15; k++) {
+                fgets(buffer, 256, f);
+            }
+            fgets(buffer, 256, f);
+        }
+    }
+}
+
+void runCompleteGraphs(int orderStart, int orderEnd) {
+    int * edges = malloc(sizeof(int) * (orderEnd * (orderEnd - 1)));
+    int c;
+    FILE * f;
+    graph * currentGraph;
+    pC clk;
+    double counterTime;
+    for (int i = orderStart; i <= orderEnd; i++) {
+        c = 0;
+        for (int j = 0; j < i; j++) {
+            for (int k = j + 1; k < i; k++) {
+                edges[c++] = j;
+                edges[c++] = k;
+            }
+        }
+        
+        currentGraph = createGraph(i, c/2, edges);
+        //printGraph(currentGraph, 1, 0, 0);
+        /*/
+        printf("Working on Vertex Iterator.\n");
+        clk = startCounter();
+        vertexGraphColoring(currentGraph);
+        counterTime = getCounter(clk);
+        printf("Done: %.6f\n", counterTime);
+        f = fopen("Results2.txt", "a+");
+        fprintf(f, "<order:%d, edges:%d, delta:%d, colors: %d, graph:%d, type:0, time:%.6f>\n", i, currentGraph->edgeCount, currentGraph->delta, currentGraph->chroma, 1, counterTime);
+        fclose(f);
+        //*/
+        printf("Working on Vertex UCI.\n");
+        
+        clk = startCounter();
+        vertexGraphColoringUCI(currentGraph);
+        counterTime = getCounter(clk);
+        printf("Done: %.6f\n", counterTime);
+        f = fopen("Results2.txt", "a+");
+        fprintf(f, "<order:%d, edges:%d, delta:%d, colors: %d, graph:%d, type:1, time:%.6f>\n", i, currentGraph->edgeCount, currentGraph->delta, currentGraph->chroma, 1, counterTime);
+        fclose(f);
+        destroyGraph(currentGraph);
+    }
+
 }

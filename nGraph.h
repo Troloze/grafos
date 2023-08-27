@@ -7,6 +7,10 @@
 #include <math.h>
 #include "nMisc.h"
 
+//#define STORE_BACKUP
+#define NO_PRINT
+#define BACKUP_TIME_SECS (60 * CLOCKS_PER_SEC)
+
 typedef struct _graph graph;
 typedef struct _edge edge;
 typedef struct _vertex vertex;
@@ -22,6 +26,7 @@ struct _graph {
     int vertexCount;
     int edgeCount;
     int delta;
+    int chroma;
 };
 
 struct _edge {

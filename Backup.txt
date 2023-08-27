@@ -1,0 +1,2 @@
+Order: 8, Graph: 11117.
+Vertex UCI.

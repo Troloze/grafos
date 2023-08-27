@@ -437,6 +437,35 @@ void printIterator(iterator * it) {
     return;
 }
 
+char * IteratorToString(iterator * it) {
+    char * ret = malloc(sizeof(char) * 1024);
+    ret = "";
+    char buffer[128] = "";
+    sprintf(buffer, "size: %d, lockedSize: %d, maxValue: %d\nLocked: ", it->size, it->lockedSize, it->maxValue);
+    strcat(ret, buffer);
+    for (int i = 0; i < it->lockedSize; i++) {
+        if (i != 0) {
+            sprintf(buffer, " ");
+            strcat(ret, buffer);
+        }
+        sprintf(buffer, "%d", it->lockedValues[i]);
+        strcat(ret, buffer);
+    }
+    sprintf(buffer, "\nValues: ");
+    strcat(ret, buffer);
+    for (int i = 0; i < it->size; i++) {
+        if (i != 0) {
+            sprintf(buffer, " ");
+            strcat(ret, buffer);
+        }
+        sprintf(buffer, "%d", it->values[i]);
+        strcat(ret, buffer);
+    }
+    sprintf(buffer, "\n");
+    strcat(ret, buffer);
+    return ret;
+}
+
 void printUCI(UCI * in, int printDetail, int shorten) {
     int pointer, validator, counter;
     printf("UCI\nSize: %d, Limit: %d, Used: %d\n", in->size, in->limit, in->used);
@@ -483,8 +512,7 @@ void printUCI(UCI * in, int printDetail, int shorten) {
         printf("VConfg:\n");
         for (int i = 0; i < in->limit; i++) {
             if (in->configuration[i] == 0) {
-                printf("(%d)\n", i);
-                continue;
+                break;
             }
             printf("(%d) [", i);
             pointer = in->pointers[i];
@@ -517,7 +545,42 @@ void printUCI(UCI * in, int printDetail, int shorten) {
                 }
             }
         } 
+        if (in->used < in->size) {
+            if (in->used + 1 != in->size) printf("(...)\n");
+            printf("(%d)", in->limit - 1);
+        }
     }
+}
+
+char * UCIToString(UCI * in) {
+    char ret[1024] = "";
+    char * ret2;
+    char buffer[128] = "";
+    sprintf(buffer, "size: %d, limit: %d, used: %d\nConfig: ", in->size, in->limit, in->used);
+    strcat(ret, buffer);
+    for (int i = 0; i < in->limit; i++) {
+        if (i != 0) {
+            sprintf(buffer, " ");
+            strcat(ret, buffer);
+        }
+        sprintf(buffer, "%d", in->configuration[i]);
+        strcat(ret, buffer);
+    }
+    sprintf(buffer, "\nValues: ");
+    strcat(ret, buffer);
+    for (int i = 0; i < in->size; i++) {
+        if (i != 0) {
+            sprintf(buffer, " ");
+            strcat(ret, buffer);
+        }
+        sprintf(buffer, "%d", in->valueConfig[i]);
+        strcat(ret, buffer);
+    }
+    sprintf(buffer, "\n");
+    strcat(ret, buffer);
+    ret2 = malloc(sizeof(char) * (1 + strlen(ret)));
+    sprintf(ret2, "%s", ret);
+    return ret2;
 }
 
 bitmap * createBitmap(int size) {

@@ -5,9 +5,11 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <string.h>
 
 #define MIN(i, j) (((i) < (j)) ? (i) : (j))
 #define MAX(i, j) (((i) > (j)) ? (i) : (j))
+
 
 typedef struct _ll linkedList;
 struct _ll {
@@ -54,7 +56,9 @@ int lockValue(iterator * it, int valuePos, int value);
 int unlockValue(iterator * it, int valuePos);
 
 void printIterator(iterator * it);
+char * IteratorToString(iterator * it);
 void printUCI(UCI * in, int printDetail, int shorten);
+char * UCIToString(UCI * in);
 
 iterator * createIterator(int size, int * startingValues, int maxValue);
 iterator * cloneIterator(iterator * it);
