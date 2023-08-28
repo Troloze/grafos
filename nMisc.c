@@ -42,17 +42,48 @@ static void UCIResetBaseLine(UCI * in, int line, int index) {
     return;
 }
 
+
+static int UCIIterateBase(UCI * in) {
+    int index, pointer, upperBound, stop = 0, next_val = 0;
+    if (in->used == 1) return 1;
+
+    for (int line = 0; line < in->used; line++) {
+        if (in->configuration[line] <= 1) {
+            return 1;
+        }
+        upperBound = -1;
+        if (line < in->used - 1) {
+            if (in->configuration[line + 1] == in->configuration[line])
+                upperBound = in->valueConfig[in->pointers[line + 1]];
+        }
+        for (int i = 0; i < in->configuration[line]; i++) {
+            index = (in->configuration[line] - 1 - i);
+            pointer = index + in->pointers[line];
+            if (in->valueConfig[pointer] == in->maxValues[line] - 1 - i) {
+                continue;
+            } // Procurar o primeiro valor que não esteja na posição máxima
+            if (index == 0) { //Se a posição do valor for 0, ver se está no limite máximo)
+                if (in->valueConfig[pointer] == upperBound) {
+                    break;
+                }
+            }
+            next_val = in->valueConfig[pointer] + 1;
+            stop = 1;
+        }
+        in->valueConfig[in->pointers[line]] = next_val;
+        for (int i = index + 1; i < in->configuration[line]; i++) {
+            in->valueConfig[in->pointers[line] + i] = in->valueConfig[in->pointers[line] + i - 1] + 1;
+        }
+        if (stop) return 0;
+    }
+
+    return 1;
+}
+
 static int UCIIterateBaseLine(UCI * in, int line) {
-    int index, flip = 1, pointer, upperBound = -1, lowerBound = -1;
+    int index, pointer, upperBound = -1;
     
-    if (line > 0) {
-        if (in->configuration[line - 1] == in->configuration[line])
-            lowerBound = in->valueConfig[in->pointers[line - 1]];
-    }
-    if (line < in->used - 1) {
-        if (in->configuration[line + 1] == in->configuration[line])
-            upperBound = in->valueConfig[in->pointers[line + 1]];
-    }
+    
 
     for (int i = 0; i < in->configuration[line]; i++) {
         index = (in->configuration[line] - 1 - i);
@@ -69,15 +100,14 @@ static int UCIIterateBaseLine(UCI * in, int line) {
         UCIResetBaseLine(in, line, index);
         return 0;
     }
-    if (flip) {
-        if (lowerBound == -1) lowerBound = 0;
-        in->valueConfig[in->pointers[line]] = lowerBound;
-        UCIResetBaseLine(in, line, 0);
-    }
+   
+    in->valueConfig[in->pointers[line]] = 0;
+    UCIResetBaseLine(in, line, 0);
+    
     return 1;
 }
 
-static int UCIIterateBase(UCI * in) {
+static int _UCIIterateBase(UCI * in) {
     if (in->used == 1) return 1;
 
     for (int i = 0; i < in->used; i++) {
@@ -297,6 +327,7 @@ void UCIResetBase(UCI * in) {
     }
     in->maxValues[0] = in->size;
     in->pointers[0] = 0;
+    in->pointers[in->limit] = in->size;
     in->used = 0;
     for (int i = 0; i < in->limit - 1; i++) {
         in->maxValues[i + 1] = in->maxValues[i] - in->configuration[i];

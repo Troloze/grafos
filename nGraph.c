@@ -241,7 +241,7 @@ void vertexGraphColoringUCI(graph * in) {
     t1 = clock();
     t3 = clock();
     t4 = clock();
-    while (!validateColoringUCI2(in, uci, validBm)) {
+    while (!validateColoringUCI(in, uci)) {
 #ifdef STORE_BACKUP
         t2 = clock();
         if (t2 - t4 > BACKUP_TIME_SECS) {
