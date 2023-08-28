@@ -32,7 +32,7 @@ double getCounter(pC in) {
 int main (int argc, char** argv) {
     
     //for (int i = 2; i <= 8; i++)
-        runCompleteGraphs(13, 15);
+        runCompleteGraphs(4, 15);
 
     return 0;
 }
